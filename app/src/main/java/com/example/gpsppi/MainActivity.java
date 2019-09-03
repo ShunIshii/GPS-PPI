@@ -37,7 +37,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private static final String TAG = "MainActivity";    //Log用のタグ名
     private TextView textView;
     private SensorManager sensorManager;
-    private int cnt;
+    private int cnt = 0;
     private ArrayList<Float> ppiData;                   //測定値を格納する配列
     private ArrayList<Float> timeData;                  //測定時間を格納する配列
     private int state = 0;                              //測定中(1) or 待機中(0)
@@ -93,7 +93,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         ppiData = new ArrayList();
         timeData = new ArrayList();
         textView.setText(String.valueOf(cnt));
-        Log.d(TAG, "Button clicked (Start)");
+        Log.d(TAG, "Start PPI");
         sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
         List<Sensor> ppi_sensor = sensorManager.getSensorList(65547);
         sensorManager.registerListener(this, ppi_sensor.get(0), SensorManager.SENSOR_DELAY_FASTEST);
@@ -102,7 +102,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     public void stopPPI() {
         state = 0;
         textView.setText(R.string.waiting);
-        Log.d(TAG, "Button clicked (Stop)");
+        Log.d(TAG, "StopPPI");
         createFile();
         sensorManager.unregisterListener(this);
     }
@@ -157,6 +157,9 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             Log.d(TAG, "ppi:"+ cnt + ", 0:" + event.values[0] + "(stored) " + Math.round(time));
             ppiData.add(event.values[0]);
             timeData.add(time);
+            if (cnt == 10) {
+                stopPPI();
+            }
         } else {
             Log.d(TAG, "ppi:"+ cnt + ", 0:" + event.values[0] + "(no)");
         }
@@ -196,12 +199,19 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     @Override
     public void onLocationChanged(Location location) {
-        Toast.makeText(this, "Latitude=" + location.getLatitude() + ", Longitude=" + location.getLongitude(), Toast.LENGTH_SHORT).show();
+        //Toast.makeText(this, "Latitude=" + location.getLatitude() + ", Longitude=" + location.getLongitude(), Toast.LENGTH_SHORT).show();
         double lati = location.getLatitude();
         double longi = location.getLongitude();
         Log.i(TAG, "Latitude=" + lati + ", Longitude=" + longi);
-        if (lati < 35.5652200 && lati > 35.5652300) {
-            Log.i(TAG, "arrived");
+        if (lati > 35.5652000 && lati < 35.5652500 && longi > 139.4027800 && longi < 139.4028300) {
+            Log.i(TAG, "in");
+            Toast.makeText(this, "in", Toast.LENGTH_SHORT).show();
+            if (state == 0) {
+                startPPI();
+            }
+        } else {
+            Log.i(TAG, "out");
+            Toast.makeText(this, "out", Toast.LENGTH_SHORT).show();
         }
     }
 }
