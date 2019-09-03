@@ -79,24 +79,32 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     @Override
     public void onClick(View view) {                    //ボタンが押された場合の処理
         if (state == 0) {                               // 1回目のクリックで測定を開始
-            state = 1;
-            cnt = 0;
-            time = 0;
-            timestamp = 0;
-            ppiData = new ArrayList();
-            timeData = new ArrayList();
-            textView.setText(String.valueOf(cnt));
-            Log.d(TAG, "Button clicked (Start)");
-            sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
-            List<Sensor> ppi_sensor = sensorManager.getSensorList(65547);
-            sensorManager.registerListener(this, ppi_sensor.get(0), SensorManager.SENSOR_DELAY_FASTEST);
+            startPPI();
         } else {                                        // 2回目のクリックでデータを保存
-            state = 0;
-            textView.setText(R.string.waiting);
-            Log.d(TAG, "Button clicked (Stop)");
-            createFile();
-            sensorManager.unregisterListener(this);
+            stopPPI();
         }
+    }
+
+    public void startPPI() {
+        state = 1;
+        cnt = 0;
+        time = 0;
+        timestamp = 0;
+        ppiData = new ArrayList();
+        timeData = new ArrayList();
+        textView.setText(String.valueOf(cnt));
+        Log.d(TAG, "Button clicked (Start)");
+        sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
+        List<Sensor> ppi_sensor = sensorManager.getSensorList(65547);
+        sensorManager.registerListener(this, ppi_sensor.get(0), SensorManager.SENSOR_DELAY_FASTEST);
+    }
+
+    public void stopPPI() {
+        state = 0;
+        textView.setText(R.string.waiting);
+        Log.d(TAG, "Button clicked (Stop)");
+        createFile();
+        sensorManager.unregisterListener(this);
     }
 
     private void createFile() {
@@ -188,7 +196,12 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     @Override
     public void onLocationChanged(Location location) {
-        //Toast.makeText(this, "Latitude=" + location.getLatitude() + ", Longitude=" + location.getLongitude(), Toast.LENGTH_SHORT).show();
-        Log.i(TAG, "Latitude=" + location.getLatitude() + ", Longitude=" + location.getLongitude());
+        Toast.makeText(this, "Latitude=" + location.getLatitude() + ", Longitude=" + location.getLongitude(), Toast.LENGTH_SHORT).show();
+        double lati = location.getLatitude();
+        double longi = location.getLongitude();
+        Log.i(TAG, "Latitude=" + lati + ", Longitude=" + longi);
+        if (lati < 35.5652200 && lati > 35.5652300) {
+            Log.i(TAG, "arrived");
+        }
     }
 }
