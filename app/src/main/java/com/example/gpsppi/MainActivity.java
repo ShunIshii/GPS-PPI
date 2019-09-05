@@ -40,7 +40,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private int cnt = 0;
     private ArrayList<Float> ppiData;                   //測定値を格納する配列
     private ArrayList<Float> timeData;                  //測定時間を格納する配列
-    private int state = 0;                              //測定中(1) or 待機中(0)
+    private int ppi_state = 0;                              //測定中(1) or 待機中(0)
+    private int register = 0;                           //位置登録するなら(1)
     private static final float NS2MS = 1.0f / 1000000.0f;
     private float time;
     private float timestamp;
@@ -48,6 +49,13 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     private GoogleApiClient mGoogleApiClient;
     private static final long UPDATE_INTERVAL_MS = 5000;
     private static final long FASTEST_INTERVAL_MS = 5000;
+
+    private double spot[] = new double[2];
+
+    public void init() {
+        spot[0] = 0;
+        spot[1] = 0;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,8 +66,11 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         textView = findViewById(R.id.state);
 
         /*buttonに関する動作の設定*/
-        Button button = findViewById(R.id.button);
-        button.setOnClickListener(this);
+        Button ppi_button = findViewById(R.id.ppi_button);
+        ppi_button.setOnClickListener(this);
+
+        Button location_button = findViewById(R.id.location_button);
+        location_button.setOnClickListener(this);
 
         if (!hasGPS()) {
             Log.d(TAG, "no GPS");
@@ -69,6 +80,8 @@ public class MainActivity extends WearableActivity implements SensorEventListene
         mGoogleApiClient = new GoogleApiClient.Builder(this).addApi(LocationServices.API).addApi(Wearable.API).addConnectionCallbacks(this).addOnConnectionFailedListener(this).build();
         mGoogleApiClient.connect();
 
+        init();
+
         Log.d(TAG, "onCreated");
     }
 
@@ -77,16 +90,26 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     @Override
-    public void onClick(View view) {                    //ボタンが押された場合の処理
-        if (state == 0) {                               // 1回目のクリックで測定を開始
-            startPPI();
-        } else {                                        // 2回目のクリックでデータを保存
-            stopPPI();
+    public void onClick(View v) {                    //ボタンが押された場合の処理
+        switch (v.getId()) {
+            case R.id.ppi_button:
+                if (ppi_state == 0) {                               // 1回目のクリックで測定を開始
+                    startPPI();
+                } else {                                        // 2回目のクリックでデータを保存
+                    stopPPI();
+                }
+                break;
+            case R.id.location_button:
+                registerLocation();
         }
     }
 
+    public void registerLocation() {
+        register = 1;
+    }
+
     public void startPPI() {
-        state = 1;
+        ppi_state = 1;
         cnt = 0;
         time = 0;
         timestamp = 0;
@@ -100,7 +123,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     public void stopPPI() {
-        state = 0;
+        ppi_state = 0;
         textView.setText(R.string.waiting);
         Log.d(TAG, "StopPPI");
         createFile();
@@ -145,8 +168,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-
-        if (state == 1) {
+        if (ppi_state == 1) {
             if (timestamp != 0) {
                 final float dT = (event.timestamp - timestamp) * NS2MS;
                 time += dT;
@@ -157,9 +179,6 @@ public class MainActivity extends WearableActivity implements SensorEventListene
             Log.d(TAG, "ppi:"+ cnt + ", 0:" + event.values[0] + "(stored) " + Math.round(time));
             ppiData.add(event.values[0]);
             timeData.add(time);
-            if (cnt == 10) {
-                stopPPI();
-            }
         } else {
             Log.d(TAG, "ppi:"+ cnt + ", 0:" + event.values[0] + "(no)");
         }
@@ -199,19 +218,38 @@ public class MainActivity extends WearableActivity implements SensorEventListene
 
     @Override
     public void onLocationChanged(Location location) {
-        //Toast.makeText(this, "Latitude=" + location.getLatitude() + ", Longitude=" + location.getLongitude(), Toast.LENGTH_SHORT).show();
         double lati = location.getLatitude();
         double longi = location.getLongitude();
         Log.i(TAG, "Latitude=" + lati + ", Longitude=" + longi);
-        if (lati > 35.5652000 && lati < 35.5652500 && longi > 139.4027800 && longi < 139.4028300) {
-            Log.i(TAG, "in");
-            Toast.makeText(this, "in", Toast.LENGTH_SHORT).show();
-            if (state == 0) {
-                startPPI();
-            }
+        if (register == 1) {
+            register = 0;
+            spot[0] = lati;
+            spot[1] = longi;
+            Toast.makeText(this, "registered location", Toast.LENGTH_SHORT).show();
+            Log.i(TAG, "spot: ("+spot[0] + ", " + spot[1] + ")");
         } else {
-            Log.i(TAG, "out");
-            Toast.makeText(this, "out", Toast.LENGTH_SHORT).show();
+            if (judge(spot, lati, longi)) {
+                if (ppi_state == 0) {
+                    startPPI();
+                    Log.i(TAG, "in");
+                    Toast.makeText(this, "in", Toast.LENGTH_SHORT).show();
+                }
+            } else {
+                if (ppi_state == 1) {
+                    stopPPI();
+                    Log.i(TAG, "out");
+                    Toast.makeText(this, "out", Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    public boolean judge (double[] spot, double lati, double longi) {
+        double r = 0.0001000;
+        if (spot[0] - r < lati && spot[0] + r > lati && spot[1] - r < longi && spot[1] + r > longi) {
+            return true;
+        } else {
+            return false;
         }
     }
 }

@@ -6,4 +6,5 @@
     -->
     <string name="waiting">Waiting...</string>
     <string name="start_button">Start / Stop</string>
+    <string name="register_button">Register Location</string>
 </resources>
