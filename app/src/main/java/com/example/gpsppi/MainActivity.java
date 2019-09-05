@@ -245,7 +245,7 @@ public class MainActivity extends WearableActivity implements SensorEventListene
     }
 
     public boolean judge (double[] spot, double lati, double longi) {
-        double r = 0.0001000;
+        double r = 0.0002000;
         if (spot[0] - r < lati && spot[0] + r > lati && spot[1] - r < longi && spot[1] + r > longi) {
             return true;
         } else {
